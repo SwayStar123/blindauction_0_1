@@ -109,15 +109,15 @@ impl MyContract for Contract {
                 if (!fake && bidToCheck.deposit >= value) {
                     if (placeBid(getSender(), value)) {
                         refund -= value;
-                    }
-                }
+                    };
+                };
 
                 setBid(getSender(), ~Bid::empty(), i);
 
 
-            }
+            };
             i = i + 1;
-        }
+        };
         let sender = getSender();
         transfer_to_output(amount, ETH, getSender());
     }
@@ -127,7 +127,7 @@ impl MyContract for Contract {
         if amount > 0 {
             addPendingReturns(getSender(), 0);
             transfer_to_output(amount, ETH, getSender());
-        }
+        };
     }
 
     fn auctionEnd() {
@@ -144,16 +144,16 @@ fn getSender() -> Address {
         addr
     } else {
         revert(0);
-    }
+    };
 }
 
 fn placeBid(addy: Address, value: u64) -> bool {
     if value <= storage.highestBid {
         return false;
-    }
+    };
     if storage.highestBidder != ~Address::from(0x0000000000000000000000000000000000000000000000000000000000000000) {
         addPendingReturn(storage.highestBidder, storage.highestBid);
-    }
+    };
     storage.highestBidder = addy;
     storage.highestBid = value;
     return true;
