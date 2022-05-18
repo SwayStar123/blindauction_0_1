@@ -88,7 +88,7 @@ impl MyContract for Contract {
         addBid(getSender(), bid);
     }
 
-    fn reveal(values: [u64], fakes: [bool], secrets: [b256]) {
+    fn reveal(values: [u64; 5], fakes: [bool; 5], secrets: [b256; 5]) {
         require(storage.biddingEnd < block.timestamp);
         require(storage.revealEnd > block.timestamp);
 
