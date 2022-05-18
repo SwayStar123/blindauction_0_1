@@ -2,7 +2,7 @@ contract;
 
 use std::address::Address;
 use std::hash::*;
-use std::auth::{AtuhError, Sender, msg_sender};
+use std::auth::{AuthError, Sender, msg_sender};
 use std::token::transfer_to_output;
 
 abi MyContract {
@@ -14,7 +14,7 @@ abi MyContract {
 const ETH = ~ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000000);
 
 storage {
-    beneficiary: Address;
+    beneficiary: Address,
     biddingEnd: u64,
     revealEnd: u64,
     ended: bool,
