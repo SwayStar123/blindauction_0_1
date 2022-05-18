@@ -1,14 +1,16 @@
 contract;
 
 use std::address::Address;
+use std::contract_id::ContractId;
 use std::hash::*;
-use std::auth::{AuthError, Sender, msg_sender};
+use std::chain::auth::{AuthError, Sender, msg_sender};
 use std::token::transfer_to_output;
+use std::storage::{get, store};
 
 abi MyContract {
     fn start_auction(beneficiary: Address, biddingEnd: u64, revealEnd: u64);
     fn bid(blindedBid: b256);
-    fn reveal(values: [u64], fakes: [bool], secrets: [b256]);
+    fn reveal(values: [u64; 5], fakes: [bool; 5], secrets: [b256; 5]);
 }
 
 const ETH = ~ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000000);
@@ -27,10 +29,11 @@ const BIDS: b256 = 0x00000000000000000000000000000000000000000000000000000000000
 const BIDNOS: b256 = 0x0000000000000000000000000000000000000000000000000000000000000001;
 
 fn addBid(addy: Address, bid: Bid) {
-    let index_slot = hash_pair(BIDNOS, addy, HashMethod::Sha256);
+    let index_slot = hash_pair(BIDNOS, addy.value, HashMethod::Sha256);
     let index = get::<u64>(index_slot);
     store(index_slot, index + 1);
-    let storage_slot = hash_pair(BIDS, sha256(addy, index), HashMethod::Sha256);
+    //hashing is fucked, needs a b256 as a argument, idk how to get that from a tuple or 3 different values
+    let storage_slot = hash_value((BIDS, addy, index), HashMethod::Sha256);
 
     store(storage_slot, bid);
 }
@@ -97,7 +100,7 @@ impl MyContract for Contract {
         require(length == fakes.length);
         require(length == secrets.length);
 
-        let refund;
+        let refund = 0;
         let i = 0;
         while i < length {
             let bidToCheck: Bid = getBid(getSender(), i);
@@ -105,10 +108,10 @@ impl MyContract for Contract {
             // hash part is pseudocode
             if bidToCheck.blindedBid != hash(value, pair, secret, HashMethod::keccak256) {            
             } else {
-                refund += bidToCheck.deposit;
+                refund = refund + bidToCheck.deposit;
                 if (!fake && bidToCheck.deposit >= value) {
                     if (placeBid(getSender(), value)) {
-                        refund -= value;
+                        refund = refund - value;
                     };
                 };
 
