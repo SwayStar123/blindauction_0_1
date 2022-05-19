@@ -6,11 +6,15 @@ use std::hash::*;
 use std::chain::auth::{AuthError, Sender, msg_sender};
 use std::token::transfer_to_output;
 use std::storage::{get, store};
+use std::revert::revert;
+use std::assert::assert;
 
 abi MyContract {
     fn start_auction(beneficiary: Address, biddingEnd: u64, revealEnd: u64);
     fn bid(blindedBid: b256);
     fn reveal(values: [u64; 5], fakes: [bool; 5], secrets: [b256; 5]);
+    fn withdraw();
+    fn auctionEnd();
 }
 
 const ETH = ~ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000000);
@@ -29,47 +33,47 @@ const BIDS: b256 = 0x00000000000000000000000000000000000000000000000000000000000
 const BIDNOS: b256 = 0x0000000000000000000000000000000000000000000000000000000000000001;
 
 fn addBid(addy: Address, bid: Bid) {
-    let index_slot = hash_pair(BIDNOS, addy.value, HashMethod::Sha256);
+    let index_slot = sha256(BIDNOS, addy);
     let index = get::<u64>(index_slot);
     store(index_slot, index + 1);
     //hashing is fucked, needs a b256 as a argument, idk how to get that from a tuple or 3 different values
-    let storage_slot = hash_value((BIDS, addy, index), HashMethod::Sha256);
+    let storage_slot = sha256(BIDS, addy, index);
 
     store(storage_slot, bid);
 }
 
 //for setting a specific bid index instead of adding a new one ontop
 fn setBid(addy: Address, bid: Bid, index: u64) {
-    let storage_slot = hash_pair(BIDS, sha256(addy, index), HashMethod::Sha256);
+    let storage_slot = sha256(BIDS, addy, index;
 
     store(storage_slot, bid);
 }
 
 fn getBid(addy: Address, index: u64) -> Bid {
-    let storage_slot = hash_pair(BIDS, sha256(addy, index), HashMethod::Sha256);
+    let storage_slot = sha256(BIDS, addy, index);
     get::<Bid>(storage_slot)
 }
 
 fn getAmountOfBids(addy: Address) -> u64 {
-    let index_slot = hash_pair(BIDNOS, addy, HashMethod::Sha256);
+    let index_slot = sha256(BIDNOS, addy);
     get::<u64>(index_slot)
 }
 
 const PENDINGRETURNS: b256 = 0x0000000000000000000000000000000000000000000000000000000000000002;
 
 fn addPendingReturn(addy: Address, amount: u64) {
-    let storage_slot = hash_pair(PENDINGRETURNS, addy, HashMethod::Sha256);
+    let storage_slot = sha256(PENDINGRETURNS, addy);
     store(storage_slot, amount);
 }
 
 fn getPendingReturns(addy: Address) -> u64 {
-    let storage_slot = hash_pair(PENDINGRETURNS, addy, HashMethod::Sha256);
+    let storage_slot = sha256(PENDINGRETURNS, addy);
     get::<u64>(storage_slot)
 }
 
 impl MyContract for Contract {
     fn start_auction(beneficiary: Address, biddingEnd: u64, revealEnd: u64) {
-        require(storage.ended);
+        assert(storage.ended);
         storage.ended = false;
         storage.beneficiary = beneficiary;
         storage.biddingEnd = biddingEnd;
@@ -80,10 +84,10 @@ impl MyContract for Contract {
     }
 
     fn bid(blindedBid: b256) {
-        require(!storage.ended);
-        require(storage.biddingEnd > block.timestamp);
+        assert(!storage.ended);
+        assert(storage.biddingEnd > block.timestamp);
 
-        bid = Bid {
+        let bid = Bid {
             blindedBid: blindedBid,
             deposit: msg.value,
         };
@@ -100,13 +104,13 @@ impl MyContract for Contract {
         require(length == fakes.length);
         require(length == secrets.length);
 
-        let refund = 0;
-        let i = 0;
+        let mut refund = 0;
+        let mut i = 0;
         while i < length {
             let bidToCheck: Bid = getBid(getSender(), i);
             let (value, fake, secret) = (values[i], fakes[i], secrets[i]);
             // hash part is pseudocode
-            if bidToCheck.blindedBid != hash(value, pair, secret, HashMethod::keccak256) {            
+            if bidToCheck.blindedBid != keccak256(value, pair, secret) {            
             } else {
                 refund = refund + bidToCheck.deposit;
                 if (!fake && bidToCheck.deposit >= value) {
@@ -122,13 +126,13 @@ impl MyContract for Contract {
             i = i + 1;
         };
         let sender = getSender();
-        transfer_to_output(amount, ETH, getSender());
+        transfer_to_output(refund, ETH, getSender());
     }
 
     fn withdraw() {
         let amount = getPendingReturns(getSender());
         if amount > 0 {
-            addPendingReturns(getSender(), 0);
+            addPendingReturn(getSender(), 0);
             transfer_to_output(amount, ETH, getSender());
         };
     }
