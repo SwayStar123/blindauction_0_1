@@ -20,7 +20,7 @@ abi MyContract {
     fn auction_end();
 }
 
-const ETH = ~ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000000);
+const ETH: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
 
 storage {
     beneficiary: Address,
@@ -134,14 +134,14 @@ impl MyContract for Contract {
             i = i + 1;
         };
         let sender = get_sender();
-        transfer_to_output(refund, ETH, get_sender());
+        transfer_to_output(refund, ~ContractId::from(ETH), get_sender());
     }
 
     fn withdraw() {
         let amount = get_pending_returns(get_sender());
         if amount > 0 {
             add_pending_return(get_sender(), 0);
-            transfer_to_output(amount, ETH, get_sender());
+            transfer_to_output(amount, ~ContractId::from(ETH), get_sender());
         };
     }
 
@@ -150,16 +150,24 @@ impl MyContract for Contract {
         assert(storage.revealEnd < height());
 
         storage.ended = true;
-        transfer_to_output(storage.highestBid, ETH, storage.beneficiary);
+        transfer_to_output(storage.highestBid, ~ContractId::from(ETH), storage.beneficiary);
     }
 }
 
 fn get_sender() -> Address {
-    if let Sender::Address(addr) = msg_sender().unwrap() {
+    let unwrapped = 
+    if let Result::Ok(inner_value) = msg_sender() {
+            inner_value
+    } else {
+            revert(0);
+    };
+
+    let ad = if let Sender::Address(addr) = unwrapped {
         addr
     } else {
         revert(0);
     };
+    ad
 }
 
 fn place_bid(addy: Address, value: u64) -> bool {
