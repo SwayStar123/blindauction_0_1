@@ -8,6 +8,9 @@ use std::token::transfer_to_output;
 use std::storage::{get, store};
 use std::revert::revert;
 use std::assert::assert;
+use std::context::msg_amount;
+use std::block::height;
+use std::result::*;
 
 abi MyContract {
     fn start_auction(beneficiary: Address, biddingEnd: u64, revealEnd: u64);
@@ -85,19 +88,19 @@ impl MyContract for Contract {
 
     fn bid(blindedBid: b256) {
         assert(!storage.ended);
-        assert(storage.biddingEnd > block.timestamp);
+        assert(storage.biddingEnd > height());
 
         let bid = Bid {
             blindedBid: blindedBid,
-            deposit: msg.value,
+            deposit: msg_amount(),
         };
 
         add_bid(get_sender(), bid);
     }
 
     fn reveal(values: [u64; 5], fakes: [bool; 5], secrets: [b256; 5]) {
-        assert(storage.biddingEnd < block.timestamp);
-        assert(storage.revealEnd > block.timestamp);
+        assert(storage.biddingEnd < height());
+        assert(storage.revealEnd > height());
 
         // Commented code - unnecessary due to fixed number of bids due to unavailability of dynamic arrays
         // let length = get_amount_of_bids(get_sender());
@@ -124,8 +127,8 @@ impl MyContract for Contract {
                     };
                 };
 
-                set_bid(get_sender(), ~Bid::empty(), i);
-
+                //meant to use the empty() function but a bug prevents it
+                set_bid(get_sender(), Bid {blindedBid: 0x0000000000000000000000000000000000000000000000000000000000000000, deposit: 0}, i);
 
             };
             i = i + 1;
@@ -144,7 +147,7 @@ impl MyContract for Contract {
 
     fn auction_end() {
         assert(!storage.ended);
-        assert(storage.revealEnd < block.timestamp);
+        assert(storage.revealEnd < height());
 
         storage.ended = true;
         transfer_to_output(storage.highestBid, ETH, storage.beneficiary);
@@ -176,11 +179,11 @@ struct Bid {
     deposit: u64,
 }
 
-impl Bid {
-    fn empty() -> Bid {
-        Bid {
-            blindedBid: 0x0000000000000000000000000000000000000000000000000000000000000000,
-            deposit: 0,
-        }
-    }
-}
+// impl Bid {
+//     fn empty() -> Bid {
+//         Bid {
+//             blindedBid: 0x0000000000000000000000000000000000000000000000000000000000000000,
+//             deposit: 0,
+//         }
+//     }
+// }
