@@ -27,7 +27,6 @@ storage {
     biddingEnd: u64,
     revealEnd: u64,
     ended: bool,
-
     highestBidder: Address,
     highestBid: u64,
 }
@@ -39,7 +38,6 @@ fn add_bid(addy: Address, bid: Bid) {
     let index_slot = sha256((BIDNOS, addy));
     let index = get::<u64>(index_slot);
     store(index_slot, index + 1);
-    //hashing is fucked, needs a b256 as a argument, idk how to get that from a tuple or 3 different values
     let storage_slot = sha256((BIDS, addy, index));
 
     store(storage_slot, bid);
